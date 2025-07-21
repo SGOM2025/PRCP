@@ -21,6 +21,10 @@ void heu_const_ale(Solucao& s);
 void heu_const_gul(Solucao& s);
 void heu_const_ale_gul(Solucao& s);
 
+void heu_BL_rand(Solucao& s, const int& iter);
+void heu_BL_MM(Solucao& s);
+void heu_BL_PM(Solucao& s);
+
 //----------------------------------------------------------------------------------------------------------
 void calcular_fo(Solucao& s);
 int get_ponto(const int& id);

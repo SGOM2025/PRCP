@@ -8,28 +8,19 @@
 int main()
 {
     Solucao s;
-    ler_dados("i25.txt");
+    ler_dados("i1000.txt");
     //testar_dados("");
     //---
 
     //srand(time(NULL));
 
-	heu_const_ale(s);
-	calcular_fo(s);
-	escrever_solucao(s, "");
+    heu_const_ale(s);
+    calcular_fo(s);
+    escrever_solucao(s, "");
 
-	gerar_vizinha(s);
-	calcular_fo(s);
-	escrever_solucao(s, "");
-
-    heu_const_gul(s);
-	calcular_fo(s);
-	escrever_solucao(s, "");
-
-    heu_const_ale_gul(s);
-	calcular_fo(s);
-	escrever_solucao(s, "");
-
+    // heu_BL_rand(s, 3 * (num_pos + 1) * num_pts);
+    heu_BL_PM(s);
+    escrever_solucao(s, "");
     //---
     delete[] vet_qtd_conf;
     for(int i = 0; i < num_ids; i++)
@@ -45,7 +36,7 @@ void gerar_vizinha(Solucao& s)
     int pt, pos;
     pt = rand() % num_pts;
     do
-      pos = rand() % num_pos;
+        pos = rand() % num_pos;
     while (pos == s.vet_sol[pt]);
     s.vet_sol[pt] = pos;
 }
@@ -95,8 +86,6 @@ void heu_const_ale_gul(Solucao& s)
     for (int i = 0; i < num_pts; i++)
     {
         int pos_sel = i + rand() % (num_pts - i);
-
-
         int melhor_pos;
         int melhor_id = -1;
         int min_conflitos = num_pts;
@@ -126,6 +115,105 @@ void heu_const_ale_gul(Solucao& s)
 }
 
 //----------------------------------------------------------------------------------------------------------
+
+void heu_BL_rand(Solucao& s, const int& iter)
+{
+    int mel_fo = s.fo;
+    int pos1, pos2, fo_aux, ponto;
+    while(true)
+    {
+        int flag = 1;
+
+        for(int i = 0; i < iter; i++)
+        {
+
+            ponto = rand() % num_pts;
+            pos2 = s.vet_sol[ponto];
+            do
+            {
+                pos1 = rand() % num_pos;
+            }
+            while(pos1 == pos2);
+            fo_aux = s.fo;
+            s.vet_sol[ponto] = pos1;
+            calcular_fo(s);
+
+            if(s.fo > mel_fo)
+            {
+                mel_fo = s.fo;
+                flag = 0;
+            }
+            else
+            {
+                s.fo = fo_aux;
+                s.vet_sol[ponto] = pos2;
+            }
+        }
+        if(flag) break;
+    }
+}
+
+void heu_BL_MM(Solucao& s)
+{
+    int mel_fo = s.fo;
+    while(true)
+    {
+        int mel_ponto, mel_pos;
+        int flag = 0;
+        for(int i = 0; i < num_pts; i++)
+        {
+            int pos_ori = s.vet_sol[i];
+            for(int j = 0; j < num_pos; j++)
+            {
+                s.vet_sol[i] = j;
+                calcular_fo(s);
+                if(s.fo > mel_fo)
+                {
+                    mel_fo = s.fo;
+                    mel_ponto = i;
+                    mel_pos = j;
+                    flag = 1;
+                }
+            }
+            s.vet_sol[i] = pos_ori;
+        }
+        s.fo = mel_fo;
+        printf(" %d ", s.fo);
+        if(flag) s.vet_sol[mel_ponto] = mel_pos;
+        else break;
+
+    }
+}
+
+void heu_BL_PM(Solucao& s)
+{
+    int mel_fo = s.fo;
+
+    int mel_ponto, mel_pos;
+    INICIO : ;
+    for(int i = 0; i < num_pts; i++)
+    {
+        int pos_ori = s.vet_sol[i];
+        int fo_ori =  s.fo;
+        for(int j = 0; j < num_pos; j++)
+        {
+            s.vet_sol[i] = j;
+            calcular_fo(s);
+            if(s.fo > mel_fo)
+            {
+                mel_fo = s.fo;
+                goto INICIO;
+            }
+            else
+            {
+                s.vet_sol[i] = pos_ori;
+                s.fo = fo_ori;
+            }
+        }
+        s.fo = mel_fo;
+    }
+}
+
 
 void calcular_fo(Solucao& s)
 {
