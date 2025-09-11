@@ -5,23 +5,19 @@
 
 #include "cabecalho.h"
 
+#define MAX(X,Y)((X > Y) ? (X) : (Y))
+#define MIN(X,Y)((X < Y) ? (X) : (Y))
+
 int main()
 {
-    Solucao s;
     ler_dados("i1000.txt");
     //testar_dados("");
-    //---
 
-    //srand(time(NULL));
+	Solucao s;
+    double tem_tot, tem_mel;
+	AG(100, 10, 500, 10, 600, s, tem_tot, tem_mel);
+	printf("\n\FO: %d\tTM: %.2f\tTT: %.2f\n", s.fo, tem_mel, tem_tot);
 
-    heu_const_ale(s);
-    calcular_fo(s);
-    escrever_solucao(s, "");
-
-    // heu_BL_rand(s, 3 * (num_pos + 1) * num_pts);
-    heu_BL_PM(s);
-    escrever_solucao(s, "");
-    //---
     delete[] vet_qtd_conf;
     for(int i = 0; i < num_ids; i++)
         delete[] mat_conflitos[i];
@@ -29,7 +25,126 @@ int main()
     return 0;
 }
 
-//----------------------------------------------------------------------------------------------------------
+// Definições e funções para o Algoritmo Genetico
+
+void mutacao(Solucao& s)
+{
+    int pt, pos;
+    pt = rand() % num_pts;
+    do
+        pos = rand() % num_pos;
+    while (pos == s.vet_sol[pt]);
+    s.vet_sol[pt] = pos;
+    calcular_fo(s);
+}
+
+void crossover(const int& p1, const int& p2, const int& f1, const int& f2)
+{
+    int p = 1 + rand() % (num_pts - 1);
+    for (int i = 0; i < p; i++)
+    {
+        vet_populacao[f1].vet_sol[i] = vet_populacao[p1].vet_sol[i];
+        vet_populacao[f2].vet_sol[i] = vet_populacao[p2].vet_sol[i];
+    }
+    for (int i = p; i < num_pts; i++)
+    {
+        vet_populacao[f1].vet_sol[i] = vet_populacao[p2].vet_sol[i];
+        vet_populacao[f2].vet_sol[i] = vet_populacao[p1].vet_sol[i];
+    }
+    calcular_fo(vet_populacao[f1]);
+    calcular_fo(vet_populacao[f2]);
+}
+
+void AG(const int& tam_pop, const int& per_eli, const int& num_cru, const int& pro_mut,
+        const double& tem_max, Solucao& s, double& tem_tot, double& tem_mel)
+{
+    clock_t h;
+    h = clock();
+    for (int i = 0; i < tam_pop; i++)
+        heu_const_ale_gul(vet_populacao[i]);
+    ordenar(tam_pop);
+    memcpy(&s, &vet_populacao[0], sizeof(Solucao));
+    tem_tot = ((double)clock() - h) / CLOCKS_PER_SEC;
+    tem_mel = tem_tot;
+    int elite = (per_eli / 100.00) * tam_pop;
+    int qtd_eli = MAX(1, rand() % elite);
+    printf("FO: %d\tTempo: %.2f\n", vet_populacao[0].fo, tem_mel);
+    int qtd_sol = tam_pop;
+    while (tem_tot < tem_max)
+    {
+        int p1, p2, pos_fil;
+        pos_fil = tam_pop;
+        for (int i = 0; i < num_cru; i++)
+        {
+            p1 = rand() % qtd_eli;
+            do
+                p2 = rand() % tam_pop;
+            while (p2 == p1);
+            crossover(p1, p2, pos_fil, pos_fil + 1);
+            qtd_sol += 2;
+            if (vet_populacao[pos_fil].fo > s.fo)
+            {
+                memcpy(&s, &vet_populacao[pos_fil], sizeof(Solucao));
+                tem_mel = ((double)clock() - h) / CLOCKS_PER_SEC;
+                printf("FO: %d\tTempo: %.2f\n", s.fo, tem_mel);
+            }
+            if (vet_populacao[pos_fil + 1].fo > s.fo)
+            {
+                memcpy(&s, &vet_populacao[pos_fil + 1], sizeof(Solucao));
+                tem_mel = ((double)clock() - h) / CLOCKS_PER_SEC;
+                printf("FO: %d\tTempo: %.2f\n", s.fo, tem_mel);
+            }
+            if (rand() % 101 < pro_mut)
+            {
+                mutacao(vet_populacao[pos_fil]);
+                qtd_sol++;
+                if (vet_populacao[pos_fil].fo > s.fo)
+                {
+                    memcpy(&s, &vet_populacao[pos_fil], sizeof(Solucao));
+                    tem_mel = ((double)clock() - h) / CLOCKS_PER_SEC;
+                    printf("FO: %d\tTempo: %.2f\n", s.fo, tem_mel);
+                }
+            }
+            if (rand() % 101 < pro_mut)
+            {
+                mutacao(vet_populacao[pos_fil + 1]);
+                qtd_sol++;
+                if (vet_populacao[pos_fil + 1].fo > s.fo)
+                {
+                    memcpy(&s, &vet_populacao[pos_fil + 1], sizeof(Solucao));
+                    tem_mel = ((double)clock() - h) / CLOCKS_PER_SEC;
+                    printf("FO: %d\tTempo: %.2f\n", s.fo, tem_mel);
+                }
+            }
+            pos_fil += 2;
+        }
+        ordenar(tam_pop + num_cru * 2);
+        tem_tot = ((double)clock() - h) / CLOCKS_PER_SEC;
+    }
+    printf("\nQTD SOL: %d\n\n", qtd_sol);
+}
+
+void ordenar(const int& tamanho)
+{
+    Solucao aux;
+    int flag = 1;
+    while(flag)
+    {
+        flag = 0;
+        for (int i = 0; i < tamanho - 1; i++)
+        {
+            if (vet_populacao[i].fo < vet_populacao[i + 1].fo)
+            {
+                flag = 1;
+                memcpy(&aux, &vet_populacao[i], sizeof(Solucao));
+                memcpy(&vet_populacao[i], &vet_populacao[i + 1], sizeof(Solucao));
+                memcpy(&vet_populacao[i + 1], &aux, sizeof(Solucao));
+            }
+        }
+    }
+}
+
+// Heuristicas construtivas
 
 void gerar_vizinha(Solucao& s)
 {
@@ -79,42 +194,43 @@ void heu_const_gul(Solucao& s)
 
 void heu_const_ale_gul(Solucao& s)
 {
-    int vet_aux[MAX_PTS];
+    int id, pt, pos, melhor, conflitos, min_conflitos;
+    int sel, aux, vet_pts[MAX_PTS];
     for (int i = 0; i < num_pts; i++)
-        vet_aux[i] = i;
+        vet_pts[i] = i;
     memset(&s.vet_sol, -1, sizeof(s.vet_sol));
     for (int i = 0; i < num_pts; i++)
     {
-        int pos_sel = i + rand() % (num_pts - i);
-        int melhor_pos;
-        int melhor_id = -1;
-        int min_conflitos = num_pts;
+        sel = i + rand() % (num_pts - i);
+        //---
+        min_conflitos = num_pts;
         for (int j = 0; j < num_pos; j++)
         {
-            int id = get_id(vet_aux[pos_sel], j);
-            int conflitos = 0;
+            conflitos = 0;
+            id = get_id(vet_pts[sel], j);
             for (int k = 0; k < vet_qtd_conf[id]; k++)
             {
-                int pt = get_ponto(mat_conflitos[id][k]);
-                int pos = get_posicao(mat_conflitos[id][k]);
+                pt = get_ponto(mat_conflitos[id][k]);
+                pos = get_posicao(mat_conflitos[id][k]);
                 if (s.vet_sol[pt] == pos)
                     conflitos++;
             }
-            if ((conflitos < min_conflitos) || ((conflitos == min_conflitos) && vet_qtd_conf[id] < vet_qtd_conf[melhor_id]))
+            if (conflitos < min_conflitos)
             {
                 min_conflitos = conflitos;
-                melhor_id = id;
-                melhor_pos = j;
+                melhor = j;
             }
         }
-        s.vet_sol[vet_aux[pos_sel]] = melhor_pos;
-        int aux = vet_aux[pos_sel];
-        vet_aux[pos_sel] = vet_aux[i];
-        vet_aux[i] = aux;
+        s.vet_sol[vet_pts[sel]] = melhor;
+        //---
+        aux = vet_pts[i];
+        vet_pts[i] = vet_pts[sel];
+        vet_pts[sel] = aux;
     }
+    calcular_fo(s);
 }
 
-//----------------------------------------------------------------------------------------------------------
+// Heuristicas de refinamento
 
 void heu_BL_rand(Solucao& s, const int& iter)
 {
@@ -214,6 +330,7 @@ void heu_BL_PM(Solucao& s)
     }
 }
 
+// Funções destinadas a solução
 
 void calcular_fo(Solucao& s)
 {
@@ -263,8 +380,8 @@ void escrever_solucao(const Solucao& s, char* arq)
     else
         f = fopen(arq, "w");
     fprintf(f, "\n\nFO: %d\n", s.fo);
-    //for (int i = 0; i < num_pts; i++)
-    //    fprintf(f, "Ponto: %d\tPos: %d\n", i + 1, s.vet_sol[i] + 1); // os ids no arquivo de entrada comecam em 1 (ao inves de 0)
+    for (int i = 0; i < num_pts; i++)
+        fprintf(f, "Ponto: %d\tPos: %d\n", i + 1, s.vet_sol[i] + 1); // os ids no arquivo de entrada comecam em 1 (ao inves de 0)
     if (arq != "")
         fclose(f);
 }
